@@ -1,0 +1,179 @@
+{% extends 'base.html' %}
+{% block title %}{{ item.title }} - SurplusShare{% endblock %}
+{% block content %}
+<link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
+
+<div class="mb-4">
+    <a href="/" class="text-success text-decoration-none fw-bold dynamic-btn d-inline-block">← Back to Home</a>
+</div>
+
+<div class="row g-5">
+    <div class="col-md-6">
+        {% if item.image %}
+            <img src="{{ item.image.url }}" alt="{{ item.title }}" class="img-fluid rounded-4 shadow w-100 mb-4" style="object-fit: cover; max-height: 500px;">
+        {% else %}
+            <div class="bg-secondary bg-opacity-10 rounded-4 d-flex align-items-center justify-content-center text-muted shadow-sm w-100 mb-4" style="height: 400px;">
+                <span class="fs-3">📷 No Image Available</span>
+            </div>
+        {% endif %}
+
+        <h4 class="fw-bold text-success mb-3">📍 Location Map</h4>
+        <div id="map" class="rounded-4 shadow-sm border border-success" style="height: 300px; z-index: 1;"></div>
+    </div>
+
+    <div class="col-md-6">
+        <div class="card border-0 shadow-sm rounded-4 p-4 h-100 bg-white">
+            {% if request.user == item.owner %}
+                <div class="d-flex justify-content-end mb-3">
+                    <a href="{% url 'edit_item' item.id %}" class="btn btn-warning fw-bold btn-sm dynamic-btn">✏️ Edit Item</a>
+                </div>
+            {% endif %}
+
+            <h1 class="text-success fw-bold display-5 mb-3">{{ item.title }}</h1>
+            
+            <div class="d-flex align-items-center mb-4 border p-3 rounded-3 bg-light shadow-sm">
+                {% if item.owner and item.owner.profile.avatar %}
+                    <img src="{{ item.owner.profile.avatar.url }}" class="rounded-circle me-3 shadow-sm" style="width: 60px; height: 60px; object-fit: cover;">
+                {% else %}
+                    <div class="rounded-circle bg-secondary bg-opacity-50 d-flex align-items-center justify-content-center me-3 shadow-sm text-white" style="width: 60px; height: 60px; font-size: 24px;">👤</div>
+                {% endif %}
+                <div>
+                    <p class="mb-0 fs-5"><strong>Posted by:</strong> {% if item.owner %}{{ item.owner.username }}{% else %}Anonymous{% endif %}</p>
+                    
+                    {% if item.owner and item.owner.profile.average_rating > 0 %}
+                        <p class="mb-0 text-warning fw-bold fs-6">
+                            ⭐ {{ item.owner.profile.average_rating }} / 5.0 
+                            <span class="text-muted fw-normal" style="font-size: 0.8rem;">({{ item.owner.reviews_received.count }} reviews)</span>
+                        </p>
+                    {% else %}
+                        <p class="mb-0 text-muted small fst-italic">No neighbor reviews yet</p>
+                    {% endif %}
+                </div>
+            </div>
+
+            <p class="mb-2 fs-5"><strong>📍 Location:</strong> <span id="location-text">{{ item.location }}</span></p>
+            
+            <p class="mb-3">
+                <span id="distance-badge" class="badge bg-info text-dark shadow-sm py-2 px-3 fs-6" style="display: none;">
+                    <span class="spinner-border spinner-border-sm" role="status" aria-hidden="true"></span> Calculating distance...
+                </span>
+            </p>
+
+            {% if item.expiry_date %}
+                <p class="mb-2 fs-5 text-danger fw-bold"><strong>⏳ Expires:</strong> {{ item.expiry_date|date:"F j, Y" }}</p>
+            {% endif %}
+
+            <p class="mb-4 fs-5">
+                <strong>Status:</strong> 
+                {% if item.status == 'Available' %}<span class="badge bg-success">Available</span>
+                {% else %}<span class="badge bg-secondary">Claimed 🤝</span>{% endif %}
+            </p>
+            
+            <span class="badge bg-light text-dark border p-2 mb-4 d-inline-block fs-6">{{ item.category }}</span>
+            <hr class="text-muted">
+            <h5 class="fw-bold mt-3">Description</h5>
+            <p class="fs-5 text-dark" style="white-space: pre-line;">{{ item.description }}</p>
+        </div>
+    </div>
+</div>
+
+<!-- PRIVATE MESSAGING SECTION -->
+<div class="mt-5 pt-4 border-top text-center">
+    {% if item.status == 'Available' %}
+        {% if user.is_authenticated %}
+            {% if user == item.owner %}
+                <a href="{% url 'inbox' %}" class="btn btn-outline-success fw-bold px-5 py-3 rounded-pill dynamic-btn fs-5 shadow-sm">📥 View Inquiries in Inbox</a>
+            {% else %}
+                <a href="{% url 'start_chat' item.id %}" class="btn btn-eco fw-bold px-5 py-3 rounded-pill shadow-sm dynamic-btn fs-5">💬 Message Owner Privately</a>
+            {% endif %}
+        {% else %}
+            <div class="alert alert-warning text-center fs-5 shadow-sm rounded-4">
+                You must <a href="/login/" class="alert-link text-success">Log In</a> to message the owner.
+            </div>
+        {% endif %}
+    {% else %}
+        
+        <div class="alert alert-secondary text-center fw-bold fs-5 shadow-sm rounded-4 mb-4">🔒 This item has been claimed.</div>
+        
+        {% if user.is_authenticated and user != item.owner %}
+            <div class="card border-0 shadow-sm p-4 bg-warning bg-opacity-10 rounded-4 border border-warning mx-auto" style="max-width: 600px;">
+                <h4 class="fw-bold text-dark mb-2">⭐ Leave a Trust Review</h4>
+                <p class="text-muted mb-4">Did you interact with {{ item.owner.username }}? Let the community know how it went!</p>
+                <form method="POST">
+                    {% csrf_token %}
+                    <div class="mb-3 text-start">
+                        <label class="form-label fw-bold">Rate your experience</label>
+                        <select name="rating" class="form-select w-100 shadow-sm" required>
+                            <option value="5">⭐⭐⭐⭐⭐ (5) Excellent Neighbor</option>
+                            <option value="4">⭐⭐⭐⭐ (4) Good</option>
+                            <option value="3">⭐⭐⭐ (3) Okay</option>
+                            <option value="2">⭐⭐ (2) Poor</option>
+                            <option value="1">⭐ (1) Did Not Show Up / Bad</option>
+                        </select>
+                    </div>
+                    <div class="mb-4">
+                        <textarea name="review_text" class="form-control shadow-sm" rows="2" placeholder="Write a quick review..." required></textarea>
+                    </div>
+                    <button type="submit" class="btn btn-warning fw-bold w-100 py-2 dynamic-btn shadow-sm">Submit Review</button>
+                </form>
+            </div>
+        {% endif %}
+
+    {% endif %}
+</div>
+
+<!-- LEAFLET MAP & DISTANCE CALCULATOR JAVASCRIPT -->
+<script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+<script>
+    document.addEventListener("DOMContentLoaded", function() {
+        var map = L.map('map').setView([0, 0], 2);
+        L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', { attribution: '© OpenStreetMap' }).addTo(map);
+
+        var locationString = document.getElementById('location-text').innerText;
+        
+        function calculateDistance(lat1, lon1, lat2, lon2) {
+            var R = 6371; // Radius of the earth in KILOMETERS
+            var dLat = (lat2 - lat1) * Math.PI / 180;
+            var dLon = (lon2 - lon1) * Math.PI / 180;
+            var a = Math.sin(dLat/2) * Math.sin(dLat/2) +
+                    Math.cos(lat1 * Math.PI / 180) * Math.cos(lat2 * Math.PI / 180) *
+                    Math.sin(dLon/2) * Math.sin(dLon/2);
+            var c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1-a));
+            return (R * c).toFixed(1); 
+        }
+
+        fetch('https://nominatim.openstreetmap.org/search?format=json&q=' + encodeURIComponent(locationString))
+            .then(response => response.json())
+            .then(data => {
+                if(data.length > 0) {
+                    var itemLat = data[0].lat;
+                    var itemLon = data[0].lon;
+                    map.setView([itemLat, itemLon], 13);
+                    L.marker([itemLat, itemLon]).addTo(map).bindPopup("<b>" + locationString + "</b>").openPopup();
+
+                    if ("geolocation" in navigator) {
+                        var distBadge = document.getElementById('distance-badge');
+                        distBadge.style.display = 'inline-block';
+                        
+                        navigator.geolocation.getCurrentPosition(function(position) {
+                            var userLat = position.coords.latitude;
+                            var userLon = position.coords.longitude;
+                            var distance = calculateDistance(userLat, userLon, itemLat, itemLon);
+                            
+                            distBadge.innerHTML = "📍 " + distance + " km away from you!";
+                            distBadge.classList.replace('bg-info', 'bg-success');
+                            distBadge.classList.replace('text-dark', 'text-white');
+                        }, function(error) {
+                            distBadge.innerHTML = "📍 Location access denied";
+                            distBadge.classList.replace('bg-info', 'bg-secondary');
+                            distBadge.classList.replace('text-dark', 'text-white');
+                        });
+                    }
+                } else {
+                    document.getElementById('map').innerHTML = "<div class='d-flex h-100 align-items-center justify-content-center text-muted fst-italic'>Could not locate on map.</div>";
+                }
+            })
+            .catch(err => console.error("Map error:", err));
+    });
+</script>
+{% endblock %}

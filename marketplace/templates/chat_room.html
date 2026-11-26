@@ -1,0 +1,63 @@
+{% extends 'base.html' %}
+{% block title %}Chat - SurplusShare{% endblock %}
+{% block content %}
+
+<div class="row justify-content-center">
+    <div class="col-md-8">
+        
+        <div class="d-flex align-items-center mb-3">
+            <a href="{% url 'inbox' %}" class="btn btn-outline-secondary btn-sm rounded-pill me-3 shadow-sm">← Back to Inbox</a>
+            <h4 class="fw-bold mb-0 text-dark">
+                Chatting with {% if user == convo.buyer %}{{ convo.item.owner.username }}{% else %}{{ convo.buyer.username }}{% endif %}
+            </h4>
+        </div>
+
+        <div class="card border-0 shadow-sm rounded-4 overflow-hidden">
+            <div class="bg-light p-3 border-bottom d-flex align-items-center">
+                {% if convo.item.image %}
+                    <img src="{{ convo.item.image.url }}" class="rounded-3 me-3 shadow-sm" style="width: 50px; height: 50px; object-fit: cover;">
+                {% endif %}
+                <div>
+                    <h6 class="fw-bold mb-0"><a href="{% url 'item_detail' convo.item.id %}" class="text-decoration-none text-success">{{ convo.item.title }}</a></h6>
+                    <small class="text-muted">Status: {{ convo.item.status }}</small>
+                </div>
+            </div>
+
+            <div class="p-4" style="height: 400px; overflow-y: auto; background-color: #f8fafc; display: flex; flex-direction: column;">
+                {% for msg in messages %}
+                    {% if msg.sender == user %}
+                        <div class="align-self-end bg-success text-white px-4 py-2 rounded-pill mb-2 shadow-sm" style="max-width: 75%;">
+                            {{ msg.text }}
+                            <div class="text-end text-white-50 mt-1" style="font-size: 0.65rem;">{{ msg.created_at|date:"M j, g:i a" }}</div>
+                        </div>
+                    {% else %}
+                        <div class="align-self-start bg-white text-dark border px-4 py-2 rounded-pill mb-2 shadow-sm" style="max-width: 75%;">
+                            {{ msg.text }}
+                            <div class="text-start text-muted mt-1" style="font-size: 0.65rem;">{{ msg.created_at|date:"M j, g:i a" }}</div>
+                        </div>
+                    {% endif %}
+                {% empty %}
+                    <p class="text-center text-muted mt-auto mb-auto">This is the beginning of your private conversation.</p>
+                {% endfor %}
+            </div>
+
+            <div class="bg-white p-3 border-top">
+                <form method="POST" class="d-flex align-items-center">
+                    {% csrf_token %}
+                    <div class="flex-grow-1 me-2">
+                        {{ form.text }}
+                    </div>
+                    <button type="submit" class="btn btn-success rounded-circle shadow-sm d-flex justify-content-center align-items-center" style="width: 45px; height: 45px;">
+                        <span class="fs-5">➤</span>
+                    </button>
+                </form>
+            </div>
+        </div>
+    </div>
+</div>
+
+<script>
+    const chatContainer = document.querySelector('.p-4[style*="overflow-y: auto"]');
+    chatContainer.scrollTop = chatContainer.scrollHeight;
+</script>
+{% endblock %}

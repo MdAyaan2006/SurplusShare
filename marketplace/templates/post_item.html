@@ -1,0 +1,87 @@
+{% extends 'base.html' %}
+{% block title %}Post an Item - SurplusShare{% endblock %}
+{% block content %}
+
+<div class="row justify-content-center">
+    <div class="col-md-8">
+        <div class="card border-0 shadow-sm rounded-4 p-4 p-md-5 bg-white">
+            <h2 class="fw-bold text-success mb-4 text-center">Share a Surplus Item 📦</h2>
+            <p class="text-muted text-center mb-4">Fill out the details below to share with your community.</p>
+            
+            <form method="POST" enctype="multipart/form-data">
+                {% csrf_token %}
+                
+                <!-- We loop through the form to display everything beautifully -->
+                {% for field in form %}
+                    <div class="mb-3">
+                        <label class="form-label fw-bold text-dark">{{ field.label }}</label>
+                        
+                        <!-- NEW: Auto-Detect button for the Location field -->
+                        {% if field.name == 'location' %}
+                            <div class="input-group">
+                                {{ field }}
+                                <button type="button" class="btn btn-outline-success fw-bold" id="getLocationBtn">📍 Auto-Detect</button>
+                            </div>
+                            <small class="text-muted">Click to auto-fill your current neighborhood/street.</small>
+                        {% else %}
+                            {{ field }}
+                        {% endif %}
+                        
+                        {% if field.errors %}
+                            <div class="text-danger small mt-1">{{ field.errors }}</div>
+                        {% endif %}
+                    </div>
+                {% endfor %}
+
+                <div class="d-flex justify-content-between mt-5">
+                    <a href="/" class="btn btn-light border fw-bold dynamic-btn px-4">Cancel</a>
+                    <button type="submit" class="btn btn-eco fw-bold dynamic-btn px-5">Post Item</button>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
+
+<!-- JAVASCRIPT FOR GPS LOCATION -->
+<script>
+    document.getElementById('getLocationBtn').addEventListener('click', function() {
+        const btn = this;
+        
+        // Check if the browser supports GPS location
+        if ("geolocation" in navigator) {
+            btn.innerText = "⏳ Locating...";
+            btn.classList.add('disabled'); // Prevent double-clicking
+            
+            // Ask the user for permission to get their location
+            navigator.geolocation.getCurrentPosition(function(position) {
+                const lat = position.coords.latitude;
+                const lon = position.coords.longitude;
+                
+                // Ask OpenStreetMap what address these coordinates belong to
+                fetch(`https://nominatim.openstreetmap.org/reverse?format=json&lat=${lat}&lon=${lon}`)
+                    .then(response => response.json())
+                    .then(data => {
+                        // Put the beautiful address into the Django text box!
+                        // "id_location" is the automatic ID Django gives to the location input
+                        document.getElementById('id_location').value = data.display_name;
+                        btn.innerText = "✅ Found It!";
+                        btn.classList.remove('disabled');
+                        btn.classList.replace('btn-outline-success', 'btn-success');
+                    })
+                    .catch(err => {
+                        alert("Oops! Could not translate coordinates to an address.");
+                        btn.innerText = "📍 Auto-Detect";
+                        btn.classList.remove('disabled');
+                    });
+            }, function(error) {
+                alert("Location access denied or unavailable. Please type it manually.");
+                btn.innerText = "📍 Auto-Detect";
+                btn.classList.remove('disabled');
+            });
+        } else {
+            alert("Your browser does not support Geolocation.");
+        }
+    });
+</script>
+
+{% endblock %}

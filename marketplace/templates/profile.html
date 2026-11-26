@@ -1,0 +1,93 @@
+{% extends 'base.html' %}
+{% block title %}My Profile - SurplusShare{% endblock %}
+{% block content %}
+
+<!-- NEW: Back Button -->
+<div class="mb-4">
+    <a href="/" class="text-success text-decoration-none fw-bold dynamic-btn d-inline-block">← Back to Home</a>
+</div>
+
+<div class="row g-5">
+    <!-- Left Column: Edit Profile Form -->
+    <div class="col-md-4">
+        <div class="card border-0 shadow-sm rounded-4 p-4 text-center bg-white sticky-top" style="top: 20px;">
+            <h3 class="fw-bold text-success mb-4">My Profile</h3>
+            
+            {% if profile.avatar %}
+                <img src="{{ profile.avatar.url }}" class="rounded-circle mb-3 shadow" style="width: 150px; height: 150px; object-fit: cover; border: 4px solid #10b981;">
+            {% else %}
+                <div class="rounded-circle bg-secondary bg-opacity-25 d-flex align-items-center justify-content-center mx-auto mb-3 text-white shadow" style="width: 150px; height: 150px; font-size: 60px; border: 4px solid #10b981;">👤</div>
+            {% endif %}
+            
+            <h4 class="fw-bold text-dark">{{ user.username }}</h4>
+            <p class="text-muted mb-4">{{ user.email }}</p>
+            
+            {% if profile.average_rating > 0 %}
+                <div class="bg-warning bg-opacity-10 rounded-pill py-2 px-3 mb-4 d-inline-block border border-warning shadow-sm">
+                    <span class="text-warning fw-bold fs-5">⭐ {{ profile.average_rating }} / 5.0</span>
+                    <span class="text-muted small ms-2">({{ user.reviews_received.count }} reviews)</span>
+                </div>
+            {% endif %}
+            
+            <hr>
+            
+            <h5 class="fw-bold mb-3 text-start">Edit Details</h5>
+            <form method="POST" enctype="multipart/form-data" class="text-start">
+                {% csrf_token %}
+                <div class="mb-3">
+                    <label class="form-label text-muted fw-bold small">Profile Picture</label>
+                    {{ profile_form.avatar }}
+                </div>
+                <div class="mb-4">
+                    <label class="form-label text-muted fw-bold small">Bio / About Me</label>
+                    {{ profile_form.bio }}
+                </div>
+                <button type="submit" class="btn btn-eco fw-bold w-100 py-2 dynamic-btn shadow-sm">Save Changes</button>
+            </form>
+        </div>
+    </div>
+
+    <!-- Right Column: My Items -->
+    <div class="col-md-8">
+        <h3 class="fw-bold text-dark border-bottom pb-3 mb-4">📦 Items I've Posted</h3>
+        
+        <div class="row row-cols-1 row-cols-md-2 g-4">
+            {% for item in my_items %}
+                <div class="col">
+                    <div class="card h-100 border-0 shadow-sm rounded-4 overflow-hidden dynamic-card">
+                        {% if item.image %}
+                            <img src="{{ item.image.url }}" class="card-img-top" style="height: 200px; object-fit: cover;">
+                        {% else %}
+                            <div class="bg-secondary bg-opacity-10 d-flex align-items-center justify-content-center" style="height: 200px;">
+                                <span class="text-muted">No Image</span>
+                            </div>
+                        {% endif %}
+                        <div class="card-body">
+                            <h5 class="card-title fw-bold text-dark">{{ item.title }}</h5>
+                            <span class="badge bg-light text-dark border mb-3">{{ item.category }}</span>
+                            <p class="card-text text-muted small mb-3">Posted on {{ item.created_at|date:"M j, Y" }}</p>
+                            
+                            <div class="d-flex justify-content-between align-items-center">
+                                {% if item.status == 'Available' %}
+                                    <span class="badge bg-success py-2 px-3">Available</span>
+                                    <form action="{% url 'mark_claimed' item.id %}" method="post" class="m-0">
+                                        {% csrf_token %}
+                                        <button type="submit" class="btn btn-outline-secondary btn-sm dynamic-btn fw-bold">Mark Claimed</button>
+                                    </form>
+                                {% else %}
+                                    <span class="badge bg-secondary py-2 px-3">Claimed 🤝</span>
+                                {% endif %}
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            {% empty %}
+                <div class="col-12 text-center py-5">
+                    <p class="text-muted fs-5">You haven't posted any items yet.</p>
+                    <a href="/post/" class="btn btn-accent fw-bold px-4 py-2 mt-2 shadow-sm rounded-pill dynamic-btn">+ Share Your First Item</a>
+                </div>
+            {% endfor %}
+        </div>
+    </div>
+</div>
+{% endblock %}

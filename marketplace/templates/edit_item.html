@@ -1,0 +1,13 @@
+{% extends 'base.html' %}
+{% block title %}Edit Item - SurplusShare{% endblock %}
+{% block content %}
+    <h1>Edit Item: {{ item.title }} ✏️</h1>
+    <div style="background: #f9f9f9; padding: 20px; border-radius: 8px; border: 1px solid #ccc; max-width: 600px;">
+        <form method="POST" enctype="multipart/form-data">
+            {% csrf_token %}
+            {{ form.as_p }} 
+            <button type="submit" style="background: #eab308; color: white; padding: 10px 20px; border: none; border-radius: 5px; cursor: pointer; font-size: 16px;">Save Changes</button>
+            <a href="{% url 'item_detail' item.id %}" style="margin-left: 15px; color: gray; text-decoration: none;">Cancel</a>
+        </form>
+    </div>
+{% endblock %}
